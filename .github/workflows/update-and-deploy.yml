@@ -1,10 +1,12 @@
 name: Update and deploy ArtCraft
+
 on:
   schedule:
     - cron: "23 5 * * *"
   workflow_dispatch:
   push:
-    branches: [main]
+    branches:
+      - main
     paths:
       - "index.html"
       - "public/**"
@@ -12,7 +14,7 @@ on:
       - ".github/workflows/**"
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -23,17 +25,63 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for repository file changes
+        id: repo_changes
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            site:
+              - 'index.html'
+              - 'public/**'
+              - 'scripts/**'
+              - '.github/workflows/**'
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+
       - name: Download and prepare apps
         run: python scripts/update_apps.py
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
+
+      - name: Check for app updates
+        id: app_changes
+        run: echo "changed=$(cat .apps-changed)" >> "$GITHUB_OUTPUT"
+
+      - name: Save app release state
+        if: steps.app_changes.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/apps-state.json public/apps.json
+          if ! git diff --cached --quiet; then
+            git commit -m "Update ArtCraft app releases"
+            git push
+          fi
+
+      - name: Check whether deployment is needed
+        id: deploy_check
+        run: |
+          if [[ "${{ steps.app_changes.outputs.changed }}" == "true" || \
+                "${{ steps.repo_changes.outputs.site }}" == "true" || \
+                "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "needed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "needed=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Check site size
+        if: steps.deploy_check.outputs.needed == 'true'
         run: |
           du -sh public
           size=$(du -sb public | cut -f1)
@@ -41,8 +89,17 @@ jobs:
             echo "Site is too large for GitHub Pages"
             exit 1
           fi
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v4
+
+      - name: Configure GitHub Pages
+        if: steps.deploy_check.outputs.needed == 'true'
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        if: steps.deploy_check.outputs.needed == 'true'
+        uses: actions/upload-pages-artifact@v4
         with:
           path: public
-      - uses: actions/deploy-pages@v4
+
+      - name: Deploy to GitHub Pages
+        if: steps.deploy_check.outputs.needed == 'true'
+        uses: actions/deploy-pages@v4
