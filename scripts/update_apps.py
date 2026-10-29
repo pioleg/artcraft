@@ -253,7 +253,7 @@ def main() -> int:
     failures = []
 
     for definition in APP_DEFINITIONS:
-        app_id, display_name, _, _ = definition
+        app_id, display_name, _, _, _ = definition
 
         try:
             entry, state, app_changed = update_app(definition, old_state)
