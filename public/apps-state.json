@@ -1,0 +1,67 @@
+{
+  "photocraft": {
+    "tag": "v0.17.0",
+    "asset_id": 685703080,
+    "asset_name": "photocraft-web-0.17.0.zip"
+  },
+  "vectorcraft": {
+    "tag": "v0.18.0",
+    "asset_id": 685672985,
+    "asset_name": "vectorcraft-web-0.18.0.zip"
+  },
+  "filmcraft": {
+    "tag": "v0.14.0",
+    "asset_id": 685634915,
+    "asset_name": "filmcraft-web-0.14.0.zip"
+  },
+  "lightcraft": {
+    "tag": "v0.15.0",
+    "asset_id": 685636337,
+    "asset_name": "lightcraft-web-0.15.0.zip"
+  },
+  "pdfcraft": {
+    "tag": "v0.15.0",
+    "asset_id": 685650804,
+    "asset_name": "pdfcraft-web-0.15.0.zip"
+  },
+  "effectcraft": {
+    "tag": "v0.18.0",
+    "asset_id": 685685575,
+    "asset_name": "effectcraft-web-0.18.0.zip"
+  },
+  "designcraft": {
+    "tag": "v0.14.0",
+    "asset_id": 685596380,
+    "asset_name": "designcraft-web-0.14.0.zip"
+  },
+  "figcraft": {
+    "tag": "v0.12.1",
+    "asset_id": 685853081,
+    "asset_name": "figcraft-web-0.12.1.zip"
+  },
+  "wordcraft": {
+    "tag": "v0.12.0",
+    "asset_id": 685582886,
+    "asset_name": "wordcraft-web-0.12.0.zip"
+  },
+  "deckcraft": {
+    "tag": "v0.12.0",
+    "asset_id": 685570116,
+    "asset_name": "deckcraft-web-0.12.0.zip"
+  },
+  "cadcraft": {
+    "tag": "v0.14.0",
+    "asset_id": 685626058,
+    "asset_name": "cadcraft-web-0.14.0.zip"
+  },
+  "gridcraft": {
+    "tag": "v0.13.0",
+    "asset_id": 685550016,
+    "asset_name": "gridcraft-web-0.13.0.zip"
+  },
+  "soundcraft": {
+    "tag": "v0.14.0",
+    "asset_id": 685540493,
+    "asset_name": "soundcraft-web-0.14.0.zip"
+  }
+}

@@ -1,0 +1,106 @@
+[
+  {
+    "id": "photocraft",
+    "name": "PhotoCraft",
+    "version": "v0.17.0",
+    "description": "## What's Changed\n* Package: never overwrite one link's copy with another, list a missing link once by @softwaregames1 in https://github.com/storytold/photocraft/pull/9185\n* Fix CPU pixel grid stroke width on HiDPI displays by @ssh-den in https://github.com/storytold/photocraft/pull/9199\n* Image Rotation › Arbitrary turns unlinked layer masks (#9201) by @davidmann4 in https://github.com/storytold/photocraft/pull/9203\n* fix(cms): ignore tags inside .look XML comments (#9109) by @DuBearte in https",
+    "url": "/artcraft/apps/photocraft/",
+    "repository": "https://github.com/storytold/photocraft"
+  },
+  {
+    "id": "vectorcraft",
+    "name": "VectorCraft",
+    "version": "v0.18.0",
+    "description": "## What's Changed\n* Reject exponent notation in the pica form of Unit::parse by @Silvertree2010 in https://github.com/storytold/vectorcraft/pull/4126\n* Refuse signs, exponents and non-numeric text in Export for Screens sizes by @Silvertree2010 in https://github.com/storytold/vectorcraft/pull/4123\n* Reject misplaced or excess '=' padding in base64_decode by @Silvertree2010 in https://github.com/storytold/vectorcraft/pull/4131\n* Shortcuts: the Cmd+Escape test expects no binding on Windows by @dotC",
+    "url": "/artcraft/apps/vectorcraft/",
+    "repository": "https://github.com/storytold/vectorcraft"
+  },
+  {
+    "id": "filmcraft",
+    "name": "FilmCraft",
+    "version": "v0.14.0",
+    "description": "## What's Changed\n* Keep draft-decoder counter assertions in one test by @lisn0 in https://github.com/storytold/filmcraft/pull/3286\n* Report parameter and accepted value from effects.setParam by @lisn0 in https://github.com/storytold/filmcraft/pull/3281\n* Frame workers: a replaced frame server's workers end and release its cache and media pool by @dotCooCoo in https://github.com/storytold/filmcraft/pull/3244\n* codecs: the rayon deadlock test allows 120 s between two answered frame requests by @d",
+    "url": "/artcraft/apps/filmcraft/",
+    "repository": "https://github.com/storytold/filmcraft"
+  },
+  {
+    "id": "lightcraft",
+    "name": "LightCraft",
+    "version": "v0.15.0",
+    "description": "## What's Changed\n* Migrate LightCraft to egui 0.37 with current main preserved by @skylartaylor in https://github.com/storytold/lightcraft/pull/2913\n* feat(update): add startup update prompt modal and self-update by @dylanmtaylor in https://github.com/storytold/lightcraft/pull/2933\n* security: bound heic-rs 0.1.4 work around hostile HEIF containers by @dylanmtaylor in https://github.com/storytold/lightcraft/pull/2770\n* security/raw: bound hostile-memory paths in the raw decoders by @dylanmtaylo",
+    "url": "/artcraft/apps/lightcraft/",
+    "repository": "https://github.com/storytold/lightcraft"
+  },
+  {
+    "id": "pdfcraft",
+    "name": "PDFCraft",
+    "version": "v0.15.0",
+    "description": "## What's Changed\n* Reject non-hex characters in XFA image hash parsing by @Silvertree2010 in https://github.com/storytold/pdfcraft/pull/4630\n* Fix AFNumber format printing \"inf\" for large finite values by @Silvertree2010 in https://github.com/storytold/pdfcraft/pull/4592\n* Reject '+' as a hex digit in FormCalc url Decode escapes by @Silvertree2010 in https://github.com/storytold/pdfcraft/pull/4586\n* Fix FormCalc Round overflowing to infinity for large values by @Silvertree2010 in https://github",
+    "url": "/artcraft/apps/pdfcraft/",
+    "repository": "https://github.com/storytold/pdfcraft"
+  },
+  {
+    "id": "effectcraft",
+    "name": "EffectCraft",
+    "version": "v0.18.0",
+    "description": "## What's Changed\n* Migrate EffectCraft to egui 0.37 by @skylartaylor in https://github.com/storytold/effectcraft/pull/2367\n* feat: startup update prompt modal and direct self-updating by @dylanmtaylor in https://github.com/storytold/effectcraft/pull/2420\n* build: pin craft-update to craft-libs main (db19c37) by @dylanmtaylor in https://github.com/storytold/effectcraft/pull/2435\n* sonar: method paths instead of closures (rust:S1612) by @dylanmtaylor in https://github.com/storytold/effectcraft/pu",
+    "url": "/artcraft/apps/effectcraft/",
+    "repository": "https://github.com/storytold/effectcraft"
+  },
+  {
+    "id": "designcraft",
+    "name": "DesignCraft",
+    "version": "v0.14.0",
+    "description": "## What's Changed\n* Application bar: use craft-window's shared title bar by @aiongg in https://github.com/storytold/designcraft/pull/1811\n* Fix ruler major tick spacing skipping the 10x step by @Silvertree2010 in https://github.com/storytold/designcraft/pull/1808\n* Reply with a parse error on non-UTF-8 lines in MCP serve by @Silvertree2010 in https://github.com/storytold/designcraft/pull/1803\n* Preflight: the missing-link test makes the temporary folder absolute by @dotCooCoo in https://github.c",
+    "url": "/artcraft/apps/designcraft/",
+    "repository": "https://github.com/storytold/designcraft"
+  },
+  {
+    "id": "figcraft",
+    "name": "FigCraft",
+    "version": "v0.12.1",
+    "description": "## What's Changed\n* Reject non-finite percent strings for lineHeight and letterSpacing by @Silvertree2010 in https://github.com/storytold/figcraft/pull/1274\n* Measure distribute span to the group's outermost edge by @Silvertree2010 in https://github.com/storytold/figcraft/pull/1282\n* Fix code export printing whole numbers of 2^63 or more as i64::MAX by @Silvertree2010 in https://github.com/storytold/figcraft/pull/1296\n* Keep significant digits in SVG matrix scale coefficients by @Silvertree2010 ",
+    "url": "/artcraft/apps/figcraft/",
+    "repository": "https://github.com/storytold/figcraft"
+  },
+  {
+    "id": "wordcraft",
+    "name": "WordCraft",
+    "version": "v0.12.0",
+    "description": "## What's Changed\n* Parse \\genfrac in LaTeX import so binomials survive export by @Silvertree2010 in https://github.com/storytold/wordcraft/pull/4242\n* Linux desktop entry: stop declaring text/plain by @marcoarnulfo in https://github.com/storytold/wordcraft/pull/4206\n* Lists: draw Arabic letter numbering (arabicAlpha, arabicAbjad) by @7mz410 in https://github.com/storytold/wordcraft/pull/4218\n* Cap list label length when expanding level template text by @Silvertree2010 in https://github.com/stor",
+    "url": "/artcraft/apps/wordcraft/",
+    "repository": "https://github.com/storytold/wordcraft"
+  },
+  {
+    "id": "deckcraft",
+    "name": "DeckCraft",
+    "version": "v0.12.0",
+    "description": "## What's Changed\n* Migrate DeckCraft to egui 0.37 by @skylartaylor in https://github.com/storytold/deckcraft/pull/1350\n* refactor: explicit imports in engine/anim/geom/model/render/text/pdf/ogg modules (SonarCloud S2208) by @dylanmtaylor in https://github.com/storytold/deckcraft/pull/1270\n* Slides: Ctrl+Shift+click selects a range, also in the slide sorter by @Faabyy in https://github.com/storytold/deckcraft/pull/1107\n* Reuse Slides: choose which slides of the other file to insert by @Faabyy in",
+    "url": "/artcraft/apps/deckcraft/",
+    "repository": "https://github.com/storytold/deckcraft"
+  },
+  {
+    "id": "cadcraft",
+    "name": "CADCraft",
+    "version": "v0.14.0",
+    "description": "## What's Changed\n* Migrate CADCraft to egui 0.37 by @skylartaylor in https://github.com/storytold/cadcraft/pull/2119\n* craft-pdf and its PDF backends back at craft-libs 6e7f285 by @aiongg in https://github.com/storytold/cadcraft/pull/2147\n* macOS menu choices and their shortcuts run at once by @aiongg in https://github.com/storytold/cadcraft/pull/2140\n* \"Save changes?\" and Drawing Recovery appear at once by @aiongg in https://github.com/storytold/cadcraft/pull/2144\n* refactor: explicit imports ",
+    "url": "/artcraft/apps/cadcraft/",
+    "repository": "https://github.com/storytold/cadcraft"
+  },
+  {
+    "id": "gridcraft",
+    "name": "GridCraft",
+    "version": "v0.13.0",
+    "description": "## What's Changed\n* Trace arrows stay on the traced cell when the selection moves by @marcoarnulfo in https://github.com/storytold/gridcraft/pull/2481\n* Make the Row Height dialog use points like Excel by @Silvertree2010 in https://github.com/storytold/gridcraft/pull/2524\n* Return None from datetime_from_serial when rounding carries past 9999 by @Silvertree2010 in https://github.com/storytold/gridcraft/pull/2528\n* Keep <scheme val=\"minor\"/> on every body-font font on save by @Silvertree2010 in h",
+    "url": "/artcraft/apps/gridcraft/",
+    "repository": "https://github.com/storytold/gridcraft"
+  },
+  {
+    "id": "soundcraft",
+    "name": "SoundCraft",
+    "version": "v0.14.0",
+    "description": "## What's Changed\n* Migrate SoundCraft to egui 0.37 by @skylartaylor in https://github.com/storytold/soundcraft/pull/1063\n* Follow-ups to #1058: Auto Pan keeps the stereo image, paste and Strip Silence fixes by @aiongg in https://github.com/storytold/soundcraft/pull/1060\n* Meters: keep every block's peak until the UI takes it by @forwardaudio in https://github.com/storytold/soundcraft/pull/1045\n* feat: startup update prompt modal and direct self-updating by @dylanmtaylor in https://github.com/st",
+    "url": "/artcraft/apps/soundcraft/",
+    "repository": "https://github.com/storytold/soundcraft"
+  }
+]
