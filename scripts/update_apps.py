@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
-"""Update ArtCraft WebAssembly apps only when their releases change."""
 
 from __future__ import annotations
 
 import hashlib
 import json
 import os
-import re
 import shutil
 import sys
 import tempfile
@@ -22,7 +20,8 @@ ROOT = Path(__file__).resolve().parent.parent
 PUBLIC = ROOT / "public"
 APPS_DIR = PUBLIC / "apps"
 MANIFEST_PATH = PUBLIC / "apps.json"
-STATE_PATH = PUBLIC / "apps-state.json"
+STATE_DIR = ROOT / ".state"
+STATE_PATH = STATE_DIR / "apps-state.json"
 CHANGE_FLAG_PATH = ROOT / ".apps-changed"
 
 OWNER = os.environ.get("ARTCRAFT_REPO_OWNER", "storytold")
@@ -30,7 +29,6 @@ TOKEN = os.environ.get("GITHUB_TOKEN", "")
 REPOSITORY = os.environ.get("GITHUB_REPOSITORY", "")
 API_BASE = "https://api.github.com"
 
-# id, display name, repository, release asset prefix
 APP_DEFINITIONS = [
     ("photocraft", "PhotoCraft", "photocraft", "photocraft-web-"),
     ("vectorcraft", "VectorCraft", "vectorcraft", "vectorcraft-web-"),
@@ -48,58 +46,6 @@ APP_DEFINITIONS = [
 ]
 
 
-def request_json(url: str) -> dict:
-    request = urllib.request.Request(
-        url,
-        headers={
-            "Accept": "application/vnd.github+json",
-            "X-GitHub-Api-Version": "2022-11-28",
-            **({"Authorization": f"Bearer {TOKEN}"} if TOKEN else {}),
-            "User-Agent": "artcraft-pages-updater",
-        },
-    )
-
-    with urllib.request.urlopen(request, timeout=60) as response:
-        return json.load(response)
-
-
-def download(url: str, destination: Path) -> None:
-    request = urllib.request.Request(
-        url,
-        headers={
-            **({"Authorization": f"Bearer {TOKEN}"} if TOKEN else {}),
-            "User-Agent": "artcraft-pages-updater",
-        },
-    )
-
-    with urllib.request.urlopen(request, timeout=300) as response:
-        with destination.open("wb") as output:
-            shutil.copyfileobj(response, output)
-
-
-def sha256_file(path: Path) -> str:
-    digest = hashlib.sha256()
-
-    with path.open("rb") as file:
-        for chunk in iter(lambda: file.read(1024 * 1024), b""):
-            digest.update(chunk)
-
-    return digest.hexdigest()
-
-
-def safe_extract(archive: zipfile.ZipFile, destination: Path) -> None:
-    """Extract without allowing paths to escape the destination."""
-    destination_resolved = destination.resolve()
-
-    for item in archive.infolist():
-        target = (destination / item.filename).resolve()
-
-        if target != destination_resolved and destination_resolved not in target.parents:
-            raise RuntimeError(f"Unsafe path in archive: {item.filename}")
-
-    archive.extractall(destination)
-
-
 def load_json(path: Path, default):
     try:
         return json.loads(path.read_text(encoding="utf-8"))
@@ -107,18 +53,73 @@ def load_json(path: Path, default):
         return default
 
 
-def repository_url(repo: str) -> str:
-    return f"https://github.com/{OWNER}/{repo}"
+def api_json(url: str) -> dict:
+    headers = {
+        "Accept": "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+        "User-Agent": "artcraft-pages-updater",
+    }
+    if TOKEN:
+        headers["Authorization"] = f"Bearer {TOKEN}"
+
+    request = urllib.request.Request(url, headers=headers)
+    with urllib.request.urlopen(request, timeout=60) as response:
+        return json.load(response)
 
 
-def get_latest_release(repo: str) -> dict:
+def download(url: str, destination: Path) -> None:
+    headers = {"User-Agent": "artcraft-pages-updater"}
+    if TOKEN:
+        headers["Authorization"] = f"Bearer {TOKEN}"
+
+    request = urllib.request.Request(url, headers=headers)
+    with urllib.request.urlopen(request, timeout=300) as response:
+        with destination.open("wb") as output:
+            shutil.copyfileobj(response, output)
+
+
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as file:
+        for chunk in iter(lambda: file.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def verify_archive(path: Path, asset: dict) -> None:
+    expected = asset.get("digest")
+    if not expected:
+        print(f"Warning: no GitHub checksum for {asset['name']}.")
+        return
+
+    algorithm, separator, expected_hash = expected.partition(":")
+    if not separator or algorithm.lower() != "sha256":
+        print(f"Warning: unsupported checksum for {asset['name']}.")
+        return
+
+    actual = sha256_file(path)
+    if actual.lower() != expected_hash.lower():
+        raise RuntimeError(f"SHA-256 mismatch for {asset['name']}.")
+
+
+def safe_extract(archive: zipfile.ZipFile, destination: Path) -> None:
+    root = destination.resolve()
+
+    for item in archive.infolist():
+        target = (destination / item.filename).resolve()
+        if target != root and root not in target.parents:
+            raise RuntimeError(f"Unsafe archive path: {item.filename}")
+
+    archive.extractall(destination)
+
+
+def get_release(repo: str) -> dict:
     url = f"{API_BASE}/repos/{quote(OWNER)}/{quote(repo)}/releases/latest"
-    return request_json(url)
+    return api_json(url)
 
 
-def select_release_asset(release: dict, prefix: str) -> dict:
+def get_asset(release: dict, prefix: str) -> dict:
     assets = release.get("assets", [])
-
     candidates = [
         asset for asset in assets
         if asset.get("name", "").lower().startswith(prefix.lower())
@@ -126,208 +127,158 @@ def select_release_asset(release: dict, prefix: str) -> dict:
     ]
 
     if not candidates:
-        available = ", ".join(asset.get("name", "") for asset in assets)
+        names = ", ".join(a.get("name", "") for a in assets)
         raise RuntimeError(
             f"No ZIP asset starting with {prefix!r}. "
-            f"Available assets: {available or '(none)'}"
+            f"Available assets: {names or '(none)'}"
         )
 
-    # Prefer the first matching asset, as ordered by the release API.
     return candidates[0]
 
 
-def verify_archive(archive_path: Path, asset: dict) -> None:
-    """Verify against GitHub's asset digest when it is provided."""
-    expected = asset.get("digest")
-
-    if expected:
-        algorithm, separator, expected_hash = expected.partition(":")
-        if separator and algorithm.lower() == "sha256":
-            actual = sha256_file(archive_path)
-            if actual.lower() != expected_hash.lower():
-                raise RuntimeError(
-                    f"SHA-256 mismatch for {asset['name']}: "
-                    f"expected {expected_hash}, got {actual}"
-                )
-            return
-
-    # GitHub does not provide a digest for every release asset.
-    # Do not pretend an unverified archive has been cryptographically verified.
-    print(
-        f"Warning: GitHub supplied no SHA-256 digest for {asset['name']}; "
-        "skipping checksum verification.",
-        file=sys.stderr,
-    )
-
-
-def make_app_url(app_id: str) -> str:
+def app_url(app_id: str) -> str:
     if REPOSITORY:
         repo_name = REPOSITORY.split("/", 1)[-1]
         return f"/{repo_name}/apps/{app_id}/"
-
     return f"./apps/{app_id}/"
 
 
-def update_app(definition: tuple, previous_state: dict) -> tuple[dict, dict, bool]:
-    app_id, display_name, repo, asset_prefix = definition
+def update_app(definition: tuple, old_state: dict) -> tuple[dict, dict, bool]:
+    app_id, display_name, repo, prefix = definition
     print(f"\nChecking {display_name} ({OWNER}/{repo})...")
 
-    release = get_latest_release(repo)
-    tag = release.get("tag_name") or release.get("name") or ""
+    release = get_release(repo)
+    tag = release.get("tag_name")
     if not tag:
-        raise RuntimeError("Latest release has no tag or name.")
+        raise RuntimeError("Latest release has no tag.")
 
-    asset = select_release_asset(release, asset_prefix)
-    asset_name = asset["name"]
+    asset = get_asset(release, prefix)
     asset_id = asset["id"]
+    asset_name = asset["name"]
 
-    previous = previous_state.get(app_id, {})
     destination = APPS_DIR / app_id
-    old_tag = previous.get("tag")
-    old_asset_id = previous.get("asset_id")
+    previous = old_state.get(app_id, {})
 
-    # A version is unchanged only if both the release tag and selected asset ID
-    # match the last successfully deployed state and the app still exists.
     if (
-        old_tag == tag
-        and old_asset_id == asset_id
+        previous.get("tag") == tag
+        and previous.get("asset_id") == asset_id
         and (destination / "index.html").is_file()
     ):
-        print(f"Unchanged: {tag}; skipping download.")
-        app_entry = {
-            "id": app_id,
-            "name": display_name,
-            "version": tag,
-            "description": release.get("body", "").strip()[:500],
-            "url": make_app_url(app_id),
-            "repository": repository_url(repo),
-        }
-        new_state = {
-            "tag": tag,
-            "asset_id": asset_id,
-            "asset_name": asset_name,
-        }
-        return app_entry, new_state, False
+        print(f"Unchanged: {tag}. Skipping download.")
+        changed = False
+    else:
+        print(f"Updating {display_name} to {tag}.")
 
-    print(f"Updating from {old_tag or 'not installed'} to {tag}.")
+        with tempfile.TemporaryDirectory(prefix=f"{app_id}-") as temp:
+            temp_dir = Path(temp)
+            archive_path = temp_dir / asset_name
+            extracted = temp_dir / "extracted"
+            extracted.mkdir()
 
-    with tempfile.TemporaryDirectory(prefix=f"{app_id}-") as temp:
-        temp_dir = Path(temp)
-        archive_path = temp_dir / asset_name
-        extracted_dir = temp_dir / "extracted"
-        extracted_dir.mkdir()
+            download(asset["browser_download_url"], archive_path)
+            verify_archive(archive_path, asset)
 
-        download(asset["browser_download_url"], archive_path)
-        verify_archive(archive_path, asset)
+            with zipfile.ZipFile(archive_path) as archive:
+                safe_extract(archive, extracted)
 
-        with zipfile.ZipFile(archive_path) as archive:
-            safe_extract(archive, extracted_dir)
+            candidates = []
+            for index in extracted.rglob("index.html"):
+                if any(
+                    file.is_file() and file.suffix.lower() == ".wasm"
+                    for file in index.parent.rglob("*")
+                ):
+                    candidates.append(index)
 
-        # Support either a ZIP with index.html at its root or one containing
-        # a single enclosing directory.
-        index_files = list(extracted_dir.rglob("index.html"))
-        valid_indexes = [
-            index for index in index_files
-            if any(file.suffix.lower() == ".wasm" for file in index.parent.rglob("*") if file.is_file())
-        ]
+            if len(candidates) != 1:
+                raise RuntimeError(
+                    "Expected exactly one index.html alongside a WebAssembly "
+                    f"build; found {len(candidates)}."
+                )
 
-        if len(valid_indexes) != 1:
-            raise RuntimeError(
-                f"Expected one index.html alongside a WebAssembly build, "
-                f"found {len(valid_indexes)} candidate(s)."
-            )
+            staged = temp_dir / "staged"
+            shutil.copytree(candidates[0].parent, staged)
 
-        app_root = valid_indexes[0].parent
+            backup = temp_dir / "backup"
+            if destination.exists():
+                destination.rename(backup)
 
-        # Prepare replacement separately so a failed download or extraction
-        # does not destroy the existing working app.
-        staged = temp_dir / "staged"
-        shutil.copytree(app_root, staged)
+            try:
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                staged.rename(destination)
+            except Exception:
+                if backup.exists() and not destination.exists():
+                    backup.rename(destination)
+                raise
 
-        # Swap only after the new build has passed basic validation.
-        backup = temp_dir / "backup"
-        if destination.exists():
-            destination.rename(backup)
+        changed = True
+        print(f"Installed {display_name} {tag}.")
 
-        try:
-            destination.parent.mkdir(parents=True, exist_ok=True)
-            staged.rename(destination)
-        except Exception:
-            if backup.exists() and not destination.exists():
-                backup.rename(destination)
-            raise
-
-    app_entry = {
+    entry = {
         "id": app_id,
         "name": display_name,
         "version": tag,
         "description": release.get("body", "").strip()[:500],
-        "url": make_app_url(app_id),
-        "repository": repository_url(repo),
+        "url": app_url(app_id),
+        "repository": f"https://github.com/{OWNER}/{repo}",
     }
 
-    new_state = {
+    state = {
         "tag": tag,
         "asset_id": asset_id,
         "asset_name": asset_name,
     }
 
-    print(f"Installed {display_name} {tag}.")
-    return app_entry, new_state, True
+    return entry, state, changed
 
 
 def main() -> int:
     PUBLIC.mkdir(parents=True, exist_ok=True)
     APPS_DIR.mkdir(parents=True, exist_ok=True)
+    STATE_DIR.mkdir(parents=True, exist_ok=True)
+
     CHANGE_FLAG_PATH.write_text("false\n", encoding="utf-8")
 
-    previous_state = load_json(STATE_PATH, {})
+    old_state = load_json(STATE_PATH, {})
+    old_manifest = load_json(MANIFEST_PATH, [])
+
+    old_entries = {
+        entry.get("id"): entry
+        for entry in old_manifest
+        if isinstance(entry, dict) and entry.get("id")
+    }
+
     new_state = {}
     manifest = []
     changed = False
     failures = []
 
     for definition in APP_DEFINITIONS:
-        app_id, display_name, repo, _ = definition
+        app_id, display_name, _, _ = definition
 
         try:
-            app_entry, app_state, app_changed = update_app(
-                definition, previous_state
-            )
-            manifest.append(app_entry)
-            new_state[app_id] = app_state
+            entry, state, app_changed = update_app(definition, old_state)
+            manifest.append(entry)
+            new_state[app_id] = state
             changed = changed or app_changed
 
-        except (urllib.error.URLError, urllib.error.HTTPError, OSError,
-                ValueError, zipfile.BadZipFile, RuntimeError, KeyError) as error:
-            failures.append(f"{display_name}: {error}")
+        except Exception as error:
             print(f"ERROR: {display_name}: {error}", file=sys.stderr)
+            failures.append(f"{display_name}: {error}")
 
-            # Preserve the prior manifest entry and state if the update failed.
-            old_entry = next(
-                (
-                    entry for entry in load_json(MANIFEST_PATH, [])
-                    if entry.get("id") == app_id
-                ),
-                None,
-            )
-            if old_entry:
-                manifest.append(old_entry)
+            # Keep the last known manifest and state if an update fails.
+            if app_id in old_entries:
+                manifest.append(old_entries[app_id])
+            if app_id in old_state:
+                new_state[app_id] = old_state[app_id]
 
-            if app_id in previous_state:
-                new_state[app_id] = previous_state[app_id]
-
-    # Save manifest and state only after all apps have been checked.
     MANIFEST_PATH.write_text(
         json.dumps(manifest, indent=2, ensure_ascii=False) + "\n",
         encoding="utf-8",
     )
-
     STATE_PATH.write_text(
         json.dumps(new_state, indent=2, ensure_ascii=False) + "\n",
         encoding="utf-8",
     )
-
     CHANGE_FLAG_PATH.write_text(
         "true\n" if changed else "false\n",
         encoding="utf-8",
@@ -342,7 +293,7 @@ def main() -> int:
     print(f"App files changed: {changed}")
 
     if failures:
-        print("\nSome apps could not be checked or updated:", file=sys.stderr)
+        print("\nSome apps failed to update:", file=sys.stderr)
         for failure in failures:
             print(f"- {failure}", file=sys.stderr)
         return 1
