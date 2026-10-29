@@ -31,22 +31,51 @@ jobs:
       - name: Check out repository files
         uses: actions/checkout@v4
 
-      # Download the most recent successful run's app files.
-      - name: Download previous app files artifact
-        id: download_apps
-        uses: dawidd6/action-download-artifact@v6
-        continue-on-error: true
-        with:
-          workflow: update-and-deploy.yml
-          name: artcraft-app-files
-          branch: main
-          path: /tmp/artcraft-previous-apps
-          search_artifacts: true
-          if_no_artifact_found: warn
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Download artifacts from previous successful run
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -e
+
+          RUN_ID=$(gh run list \
+            --repo "$GITHUB_REPOSITORY" \
+            --workflow update-and-deploy.yml \
+            --branch main \
+            --status success \
+            --limit 20 \
+            --json databaseId \
+            --jq '.[0].databaseId')
+
+          mkdir -p /tmp/artcraft-previous-apps
+          mkdir -p /tmp/artcraft-previous-state
+
+          if [ -z "$RUN_ID" ] || [ "$RUN_ID" = "null" ]; then
+            echo "No previous successful workflow run found."
+            exit 0
+          fi
+
+          echo "Checking artifacts from workflow run $RUN_ID."
+
+          if gh run download "$RUN_ID" \
+            --repo "$GITHUB_REPOSITORY" \
+            --name artcraft-app-files \
+            --dir /tmp/artcraft-previous-apps; then
+            echo "Previous app files downloaded."
+          else
+            echo "No app files artifact could be downloaded."
+          fi
+
+          if gh run download "$RUN_ID" \
+            --repo "$GITHUB_REPOSITORY" \
+            --name artcraft-release-state \
+            --dir /tmp/artcraft-previous-state; then
+            echo "Previous release state downloaded."
+          else
+            echo "No release state artifact could be downloaded."
+          fi
 
       - name: Restore previous app files
-        if: steps.download_apps.outcome == 'success'
         run: |
           SOURCE="/tmp/artcraft-previous-apps"
 
@@ -54,37 +83,20 @@ jobs:
             echo "Restoring previously downloaded app files..."
             mkdir -p public/apps
             cp -a "$SOURCE"/. public/apps/
-            echo "Previous app files restored."
             echo "Restored app directories:"
             find public/apps -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort
           else
-            echo "No previous app files were found. Apps will be downloaded as needed."
+            echo "No previous app files found. Apps will be downloaded as needed."
           fi
 
-      # Download the release state from the previous successful run.
-      - name: Download previous release state artifact
-        id: download_state
-        uses: dawidd6/action-download-artifact@v6
-        continue-on-error: true
-        with:
-          workflow: update-and-deploy.yml
-          name: artcraft-release-state
-          branch: main
-          path: /tmp/artcraft-previous-state
-          search_artifacts: true
-          if_no_artifact_found: warn
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Restore previous release state
-        if: steps.download_state.outcome == 'success'
         run: |
           SOURCE="/tmp/artcraft-previous-state"
 
-          if [ -d "$SOURCE" ] && [ -f "$SOURCE/apps-state.json" ]; then
-            echo "Restoring previous app release versions..."
+          if [ -f "$SOURCE/apps-state.json" ]; then
+            echo "Restoring previous release state..."
             mkdir -p .state
             cp "$SOURCE/apps-state.json" .state/apps-state.json
-            echo "Restored release state:"
             cat .state/apps-state.json
           else
             echo "No previous release state found. Apps will be checked as new."
@@ -96,17 +108,16 @@ jobs:
           python-version: "3.12"
 
       - name: Check releases and download updated apps
-        run: |
-          echo "Checking ArtCraft repositories for new releases."
-          echo "Unchanged apps with restored files will be kept."
-          echo "New or changed releases will be downloaded and installed."
-          python scripts/update_apps.py
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          echo "Checking ArtCraft repositories for new releases."
+          python scripts/update_apps.py
 
       - name: Report app update results
         id: app_changes
+        shell: bash
         run: |
           changed="$(cat .apps-changed)"
           echo "changed=$changed" >> "$GITHUB_OUTPUT"
@@ -120,7 +131,6 @@ jobs:
           echo "Current app directories:"
           find public/apps -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort
 
-      # Save the resulting app files for the next run.
       - name: Upload app files artifact
         uses: actions/upload-artifact@v4
         with:
@@ -131,7 +141,6 @@ jobs:
           compression-level: 0
           overwrite: true
 
-      # Save the release tags and asset IDs for the next run.
       - name: Upload release state artifact
         uses: actions/upload-artifact@v4
         with:
@@ -141,7 +150,6 @@ jobs:
           if-no-files-found: error
           overwrite: true
 
-      # Only check repository changes on push events.
       - name: Check for repository file changes
         id: repo_changes
         if: github.event_name == 'push'
@@ -160,6 +168,7 @@ jobs:
           APP_CHANGED: ${{ steps.app_changes.outputs.changed }}
           SITE_CHANGED: ${{ steps.repo_changes.outputs.site }}
           EVENT_NAME: ${{ github.event_name }}
+        shell: bash
         run: |
           if [[ "$APP_CHANGED" == "true" ||
                 ( "$EVENT_NAME" == "push" && "$SITE_CHANGED" == "true" ) ||
