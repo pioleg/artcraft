@@ -28,28 +28,95 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Check out repository files
         uses: actions/checkout@v4
 
-      - name: Restore previous app files
+      - name: Download previous app files artifact
+        id: download_apps
         uses: dawidd6/action-download-artifact@v6
+        continue-on-error: true
         with:
           workflow: update-and-deploy.yml
           name: artcraft-app-files
           branch: main
-          path: public
+          path: /tmp/artcraft-previous-apps
           if_no_artifact_found: warn
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Restore previous release state
+      - name: Place previously downloaded app files
+        if: steps.download_apps.outcome == 'success'
+        run: |
+          echo "Restoring previously downloaded app files..."
+          mkdir -p public/apps
+          cp -a /tmp/artcraft-previous-apps/. public/apps/
+          echo "Previous app files restored."
+
+      - name: Download previous release state artifact
+        id: download_state
         uses: dawidd6/action-download-artifact@v6
+        continue-on-error: true
         with:
           workflow: update-and-deploy.yml
           name: artcraft-release-state
           branch: main
-          path: .state
+          path: /tmp/artcraft-previous-state
           if_no_artifact_found: warn
           github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Restore release state
+        if: steps.download_state.outcome == 'success'
+        run: |
+          echo "Restoring previous app release versions..."
+          mkdir -p .state
+          cp -a /tmp/artcraft-previous-state/. .state/
+          ls -la .state
+          echo "Release state restored."
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Check releases and download updated apps
+        run: |
+          echo "Checking ArtCraft repositories for new releases..."
+          echo "Unchanged apps will be kept from the restored app files."
+          echo "New or changed releases will be downloaded and installed."
+          python scripts/update_apps.py
+
+      - name: Report app update results
+        id: app_changes
+        run: |
+          changed="$(cat .apps-changed)"
+          echo "changed=$changed" >> "$GITHUB_OUTPUT"
+
+          if [ "$changed" = "true" ]; then
+            echo "At least one app was downloaded or replaced."
+          else
+            echo "No app files needed updating."
+          fi
+
+          echo "Current app directories:"
+          find public/apps -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort
+
+      - name: Upload updated app files artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: artcraft-app-files
+          path: public/apps/
+          retention-days: 90
+          if-no-files-found: error
+          compression-level: 0
+          overwrite: true
+
+      - name: Upload updated release state artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: artcraft-release-state
+          path: .state/apps-state.json
+          retention-days: 90
+          if-no-files-found: error
+          overwrite: true
 
       - name: Check for repository file changes
         id: repo_changes
@@ -63,39 +130,7 @@ jobs:
               - 'scripts/**'
               - '.github/workflows/**'
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Download and prepare apps
-        run: python scripts/update_apps.py
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-
-      - name: Check for app updates
-        id: app_changes
-        run: echo "changed=$(cat .apps-changed)" >> "$GITHUB_OUTPUT"
-
-      - name: Upload app files artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: artcraft-app-files
-          path: public/apps/
-          retention-days: 90
-          if-no-files-found: error
-          compression-level: 0
-
-      - name: Upload release state artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: artcraft-release-state
-          path: .state/apps-state.json
-          retention-days: 90
-          if-no-files-found: error
-
-      - name: Check whether deployment is needed
+      - name: Decide whether to deploy
         id: deploy_check
         env:
           APP_CHANGED: ${{ steps.app_changes.outputs.changed }}
@@ -106,17 +141,21 @@ jobs:
                 ( "$EVENT_NAME" == "push" && "$SITE_CHANGED" == "true" ) ||
                 "$EVENT_NAME" == "workflow_dispatch" ]]; then
             echo "needed=true" >> "$GITHUB_OUTPUT"
+            echo "Deployment required."
           else
             echo "needed=false" >> "$GITHUB_OUTPUT"
+            echo "No changes detected. Skipping deployment."
           fi
 
-      - name: Check site size
+      - name: Check final website size
         if: steps.deploy_check.outputs.needed == 'true'
         run: |
+          echo "Calculating final website size..."
           du -sh public
           size=$(du -sb public | cut -f1)
+
           if [ "$size" -gt 950000000 ]; then
-            echo "Site is too large for GitHub Pages"
+            echo "ERROR: Website exceeds the configured 950 MB limit."
             exit 1
           fi
 
@@ -124,12 +163,12 @@ jobs:
         if: steps.deploy_check.outputs.needed == 'true'
         uses: actions/configure-pages@v5
 
-      - name: Upload Pages artifact
+      - name: Package website files for deployment
         if: steps.deploy_check.outputs.needed == 'true'
         uses: actions/upload-pages-artifact@v4
         with:
           path: public
 
-      - name: Deploy to GitHub Pages
+      - name: Deploy website to GitHub Pages
         if: steps.deploy_check.outputs.needed == 'true'
         uses: actions/deploy-pages@v4
