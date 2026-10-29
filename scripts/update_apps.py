@@ -30,7 +30,7 @@ APPS = [
     ("vectorcraft", "VectorCraft", "Vector graphics and illustration", "vectorcraft", "vectorcraft-web-"),
     ("filmcraft", "FilmCraft", "Video and timeline editing", "filmcraft", "filmcraft-web-"),
     ("lightcraft", "LightCraft", "Lighting and image adjustments", "lightcraft", "lightcraft-web-"),
-    ("pdfcraft", "PdfCraft", "PDF editing and document workflows", "pdfcraft", "printcraft-web-"),
+    ("pdfcraft", "PdfCraft", "PDF editing and document workflows", "pdfcraft", "pdfcraft-web-"),
     ("effectcraft", "EffectCraft", "Visual effects and compositing", "effectcraft", "effectcraft-web-"),
     ("designcraft", "DesignCraft", "Design and layout", "designcraft", "designcraft-web-"),
     ("figcraft", "FigCraft", "Interface and vector design", "figcraft", "figcraft-web-"),
