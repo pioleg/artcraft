@@ -31,6 +31,7 @@ jobs:
       - name: Check out repository files
         uses: actions/checkout@v4
 
+      # Download the most recent successful run's app files.
       - name: Download previous app files artifact
         id: download_apps
         uses: dawidd6/action-download-artifact@v6
@@ -43,14 +44,23 @@ jobs:
           if_no_artifact_found: warn
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Place previously downloaded app files
+      - name: Restore previous app files
         if: steps.download_apps.outcome == 'success'
         run: |
-          echo "Restoring previously downloaded app files..."
-          mkdir -p public/apps
-          cp -a /tmp/artcraft-previous-apps/. public/apps/
-          echo "Previous app files restored."
+          SOURCE="/tmp/artcraft-previous-apps"
 
+          if [ -d "$SOURCE" ] && [ -n "$(ls -A "$SOURCE" 2>/dev/null)" ]; then
+            echo "Restoring previously downloaded app files..."
+            mkdir -p public/apps
+            cp -a "$SOURCE"/. public/apps/
+            echo "Previous app files restored."
+            echo "Restored app directories:"
+            find public/apps -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort
+          else
+            echo "No previous app files were found. Apps will be downloaded as needed."
+          fi
+
+      # Download the release state from the previous successful run.
       - name: Download previous release state artifact
         id: download_state
         uses: dawidd6/action-download-artifact@v6
@@ -63,14 +73,20 @@ jobs:
           if_no_artifact_found: warn
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Restore release state
+      - name: Restore previous release state
         if: steps.download_state.outcome == 'success'
         run: |
-          echo "Restoring previous app release versions..."
-          mkdir -p .state
-          cp -a /tmp/artcraft-previous-state/. .state/
-          ls -la .state
-          echo "Release state restored."
+          SOURCE="/tmp/artcraft-previous-state"
+
+          if [ -d "$SOURCE" ] && [ -f "$SOURCE/apps-state.json" ]; then
+            echo "Restoring previous app release versions..."
+            mkdir -p .state
+            cp "$SOURCE/apps-state.json" .state/apps-state.json
+            echo "Restored release state:"
+            cat .state/apps-state.json
+          else
+            echo "No previous release state found. Apps will be checked as new."
+          fi
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -79,10 +95,13 @@ jobs:
 
       - name: Check releases and download updated apps
         run: |
-          echo "Checking ArtCraft repositories for new releases..."
-          echo "Unchanged apps will be kept from the restored app files."
+          echo "Checking ArtCraft repositories for new releases."
+          echo "Unchanged apps with restored files will be kept."
           echo "New or changed releases will be downloaded and installed."
           python scripts/update_apps.py
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
 
       - name: Report app update results
         id: app_changes
@@ -99,7 +118,8 @@ jobs:
           echo "Current app directories:"
           find public/apps -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort
 
-      - name: Upload updated app files artifact
+      # Save the resulting app files for the next run.
+      - name: Upload app files artifact
         uses: actions/upload-artifact@v4
         with:
           name: artcraft-app-files
@@ -109,7 +129,8 @@ jobs:
           compression-level: 0
           overwrite: true
 
-      - name: Upload updated release state artifact
+      # Save the release tags and asset IDs for the next run.
+      - name: Upload release state artifact
         uses: actions/upload-artifact@v4
         with:
           name: artcraft-release-state
@@ -118,6 +139,7 @@ jobs:
           if-no-files-found: error
           overwrite: true
 
+      # Only check repository changes on push events.
       - name: Check for repository file changes
         id: repo_changes
         if: github.event_name == 'push'
@@ -130,7 +152,7 @@ jobs:
               - 'scripts/**'
               - '.github/workflows/**'
 
-      - name: Decide whether to deploy
+      - name: Decide whether deployment is needed
         id: deploy_check
         env:
           APP_CHANGED: ${{ steps.app_changes.outputs.changed }}
@@ -152,8 +174,8 @@ jobs:
         run: |
           echo "Calculating final website size..."
           du -sh public
-          size=$(du -sb public | cut -f1)
 
+          size=$(du -sb public | cut -f1)
           if [ "$size" -gt 950000000 ]; then
             echo "ERROR: Website exceeds the configured 950 MB limit."
             exit 1
@@ -163,7 +185,7 @@ jobs:
         if: steps.deploy_check.outputs.needed == 'true'
         uses: actions/configure-pages@v5
 
-      - name: Package website files for deployment
+      - name: Package website for deployment
         if: steps.deploy_check.outputs.needed == 'true'
         uses: actions/upload-pages-artifact@v4
         with:
