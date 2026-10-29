@@ -30,19 +30,19 @@ REPOSITORY = os.environ.get("GITHUB_REPOSITORY", "")
 API_BASE = "https://api.github.com"
 
 APP_DEFINITIONS = [
-    ("photocraft", "PhotoCraft", "photocraft", "photocraft-web-"),
-    ("vectorcraft", "VectorCraft", "vectorcraft", "vectorcraft-web-"),
-    ("filmcraft", "FilmCraft", "filmcraft", "filmcraft-web-"),
-    ("lightcraft", "LightCraft", "lightcraft", "lightcraft-web-"),
-    ("pdfcraft", "PDFCraft", "pdfcraft", "pdfcraft-web-"),
-    ("effectcraft", "EffectCraft", "effectcraft", "effectcraft-web-"),
-    ("designcraft", "DesignCraft", "designcraft", "designcraft-web-"),
-    ("figcraft", "FigCraft", "figcraft", "figcraft-web-"),
-    ("wordcraft", "WordCraft", "wordcraft", "wordcraft-web-"),
-    ("deckcraft", "DeckCraft", "deckcraft", "deckcraft-web-"),
-    ("cadcraft", "CADCraft", "cadcraft", "cadcraft-web-"),
-    ("gridcraft", "GridCraft", "gridcraft", "gridcraft-web-"),
-    ("soundcraft", "SoundCraft", "soundcraft", "soundcraft-web-"),
+    ("photocraft", "PhotoCraft", "photocraft", "photocraft-web-", "Photo editor"),
+    ("vectorcraft", "VectorCraft", "vectorcraft", "vectorcraft-web-", "Vector graphics editor"),
+    ("filmcraft", "FilmCraft", "filmcraft", "filmcraft-web-", "Video editor"),
+    ("lightcraft", "LightCraft", "lightcraft", "lightcraft-web-", "Photo and image enhancement"),
+    ("pdfcraft", "PDFCraft", "pdfcraft", "pdfcraft-web-", "PDF editor"),
+    ("effectcraft", "EffectCraft", "effectcraft", "effectcraft-web-", "Visual effects editor"),
+    ("designcraft", "DesignCraft", "designcraft", "designcraft-web-", "Graphic design tool"),
+    ("figcraft", "FigCraft", "figcraft", "figcraft-web-", "Design and prototyping tool"),
+    ("wordcraft", "WordCraft", "wordcraft", "wordcraft-web-", "Word processor"),
+    ("deckcraft", "DeckCraft", "deckcraft", "deckcraft-web-", "Presentation editor"),
+    ("cadcraft", "CADCraft", "cadcraft", "cadcraft-web-", "CAD design tool"),
+    ("gridcraft", "GridCraft", "gridcraft", "gridcraft-web-", "Spreadsheet editor"),
+    ("soundcraft", "SoundCraft", "soundcraft", "soundcraft-web-", "Audio editor"),
 ]
 
 
@@ -144,7 +144,7 @@ def app_url(app_id: str) -> str:
 
 
 def update_app(definition: tuple, old_state: dict) -> tuple[dict, dict, bool]:
-    app_id, display_name, repo, prefix = definition
+    app_id, display_name, repo, prefix, description = definition
     print(f"\nChecking {display_name} ({OWNER}/{repo})...")
 
     release = get_release(repo)
@@ -217,7 +217,7 @@ def update_app(definition: tuple, old_state: dict) -> tuple[dict, dict, bool]:
         "id": app_id,
         "name": display_name,
         "version": tag,
-        "description": release.get("body", "").strip()[:500],
+        "description": description,
         "url": app_url(app_id),
         "repository": f"https://github.com/{OWNER}/{repo}",
     }
