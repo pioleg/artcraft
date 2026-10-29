@@ -14,7 +14,8 @@ on:
       - ".github/workflows/**"
 
 permissions:
-  contents: write
+  contents: read
+  actions: read
   pages: write
   id-token: write
 
@@ -29,11 +30,30 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Restore previous app files
+        uses: dawidd6/action-download-artifact@v6
         with:
-          fetch-depth: 0
+          workflow: update-and-deploy.yml
+          name: artcraft-app-files
+          branch: main
+          path: public
+          if_no_artifact_found: warn
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Restore previous release state
+        uses: dawidd6/action-download-artifact@v6
+        with:
+          workflow: update-and-deploy.yml
+          name: artcraft-release-state
+          branch: main
+          path: .state
+          if_no_artifact_found: warn
+          github_token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Check for repository file changes
         id: repo_changes
+        if: github.event_name == 'push'
         uses: dorny/paths-filter@v3
         with:
           filters: |
@@ -58,23 +78,33 @@ jobs:
         id: app_changes
         run: echo "changed=$(cat .apps-changed)" >> "$GITHUB_OUTPUT"
 
-      - name: Save app release state
-        if: steps.app_changes.outputs.changed == 'true'
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add public/apps-state.json public/apps.json
-          if ! git diff --cached --quiet; then
-            git commit -m "Update ArtCraft app releases"
-            git push
-          fi
+      - name: Upload app files artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: artcraft-app-files
+          path: public/apps/
+          retention-days: 90
+          if-no-files-found: error
+          compression-level: 0
+
+      - name: Upload release state artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: artcraft-release-state
+          path: .state/apps-state.json
+          retention-days: 90
+          if-no-files-found: error
 
       - name: Check whether deployment is needed
         id: deploy_check
+        env:
+          APP_CHANGED: ${{ steps.app_changes.outputs.changed }}
+          SITE_CHANGED: ${{ steps.repo_changes.outputs.site }}
+          EVENT_NAME: ${{ github.event_name }}
         run: |
-          if [[ "${{ steps.app_changes.outputs.changed }}" == "true" || \
-                "${{ steps.repo_changes.outputs.site }}" == "true" || \
-                "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+          if [[ "$APP_CHANGED" == "true" ||
+                ( "$EVENT_NAME" == "push" && "$SITE_CHANGED" == "true" ) ||
+                "$EVENT_NAME" == "workflow_dispatch" ]]; then
             echo "needed=true" >> "$GITHUB_OUTPUT"
           else
             echo "needed=false" >> "$GITHUB_OUTPUT"
