@@ -41,6 +41,7 @@ jobs:
           name: artcraft-app-files
           branch: main
           path: /tmp/artcraft-previous-apps
+          search_artifacts: true
           if_no_artifact_found: warn
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -70,6 +71,7 @@ jobs:
           name: artcraft-release-state
           branch: main
           path: /tmp/artcraft-previous-state
+          search_artifacts: true
           if_no_artifact_found: warn
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
