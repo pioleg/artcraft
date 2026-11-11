@@ -25,7 +25,7 @@ APP_DEFINITIONS = [
     ("lightcraft", "LightCraft", "lightcraft", "lightcraft-web-", "Photo library and raw development"),
     ("pdfcraft", "PdfCraft", "pdfcraft", "pdfcraft-web-", "PDF reader and editor"),
     ("effectcraft", "EffectCraft", "effectcraft", "effectcraft-web-", "Motion graphics and visual effects"),
-    ("anicraft", "AniCraft", "anicraft", "anicraft-web-", "2D animation editor"),
+    # ("anicraft", "AniCraft", "anicraft", "anicraft-web-", "2D animation editor"),
     ("designcraft", "DesignCraft", "designcraft", "designcraft-web-", "Page layout and publishing"),
     ("figcraft", "FigCraft", "figcraft", "figcraft-web-", "Interface design and prototyping"),
     ("texturecraft", "TextureCraft", "texturecraft", "texturecraft-web-", "3D texture painting"),
