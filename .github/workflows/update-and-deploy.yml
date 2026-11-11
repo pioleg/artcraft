@@ -2,7 +2,8 @@ name: Update and deploy ArtCraft
 
 on:
   schedule:
-    - cron: "23 5 * * *"
+    - cron: "0 2 * * *"
+      timezone: "Europe/Warsaw"
   workflow_dispatch:
   push:
     branches:
