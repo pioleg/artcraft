@@ -35,7 +35,7 @@ APP_DEFINITIONS = [
     ("deckcraft", "DeckCraft", "deckcraft", "deckcraft-web-", "Presentation editor"),
     ("cadcraft", "CADCraft", "cadcraft", "cadcraft-web-", "Computer-aided design"),
     ("gridcraft", "GridCraft", "gridcraft", "gridcraft-web-", "Spreadsheet editor"),
-    ("craft-anything", "Craft Anything", "craft-anything", "craft-anything-web-", "Explore and understand software"),
+    ("craft-anything", "Craft Anything", "craft-anything", "craft-anything-web-", "Explore and understand software")
 ]
 
 
