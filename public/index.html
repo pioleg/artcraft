@@ -1,263 +1,121 @@
+
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>ArtCraft Apps</title>
-  <style>
-    * {
-      box-sizing: border-box;
-    }
-
-    :root {
-      color-scheme: dark;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: #000;
-      color: #eee;
-    }
-
-    body {
-      margin: 0;
-      background: #000;
-      color: #eee;
-    }
-
-    main {
-      width: min(1200px, 100%);
-      margin: 0 auto;
-      padding: 24px;
-    }
-
-    #search {
-      display: block;
-      width: 100%;
-      margin: 0 0 20px;
-      padding: 12px 14px;
-      border: 1px solid #444;
-      border-radius: 0;
-      outline: none;
-      background: #111;
-      color: #fff;
-      font: inherit;
-    }
-
-    #search:focus {
-      border-color: #aaa;
-    }
-
-    #apps {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-      gap: 1px;
-    }
-
-    .app {
-      display: flex;
-      min-width: 0;
-      gap: 14px;
-      align-items: flex-start;
-      padding: 18px;
-      background: #000;
-      color: inherit;
-      text-decoration: none;
-      cursor: pointer;
-      outline-offset: -3px;
-    }
-
-    .app:hover,
-    .app:focus-visible {
-      background: #171717;
-    }
-
-    .app-icon {
-      flex: 0 0 48px;
-      width: 48px;
-      height: 48px;
-      object-fit: contain;
-    }
-
-    .app-info {
-      flex: 1;
-      min-width: 0;
-    }
-
-    .app-name {
-      margin: 0 0 6px;
-      font-size: 16px;
-      font-weight: 600;
-    }
-
-    .app-description {
-      margin: 0 0 10px;
-      color: #aaa;
-      font-size: 13px;
-      line-height: 1.45;
-    }
-
-    .app-version {
-      display: inline-block;
-      color: #888;
-      font-size: 12px;
-      text-decoration: underline;
-      text-underline-offset: 3px;
-      cursor: pointer;
-    }
-
-    .app-version:hover {
-      color: #fff;
-    }
-
-    #status {
-      padding: 24px 0;
-      color: #888;
-      font-size: 14px;
-    }
-
-    [hidden] {
-      display: none !important;
-    }
-
-    @media (max-width: 480px) {
-      main {
-        padding: 12px;
-      }
-
-      #apps {
-        grid-template-columns: 1fr;
-      }
-    }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>ArtCraft Web Launcher</title>
+<style>
+*{box-sizing:border-box}
+:root{color-scheme:dark;font-family:Arial,Helvetica,sans-serif;background:#000;color:#eee}
+body{margin:0;background:#000;color:#eee;font-size:14px}
+main{width:min(1400px,100%);margin:0 auto;padding:24px}
+#search{display:block;width:100%;height:42px;padding:0 12px;margin:0 0 22px;border:1px solid #444;border-radius:0;background:#080808;color:#eee;font:inherit;outline:none}
+#search:focus{border-color:#999}
+#apps{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:1px;background:#333;border:1px solid #333}
+.app{position:relative;min-width:0;min-height:150px;padding:18px;background:#000}
+.app-main{display:block;color:inherit;text-decoration:none}
+.app-main::after{content:"";position:absolute;inset:0;z-index:1}
+.app-main:focus-visible{outline:2px solid #fff;outline-offset:-4px}
+.app-top{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+.app-icon{width:40px;height:40px;object-fit:contain;flex-shrink:0}
+.app-icon-fallback{width:40px;height:40px;display:none;align-items:center;justify-content:center;border:1px solid #555;color:#eee;font-size:12px;font-weight:bold;flex-shrink:0}
+.app h2{margin:0;font-size:16px;font-weight:600;overflow-wrap:anywhere}
+.description{margin:0;color:#aaa;line-height:1.5;overflow-wrap:anywhere}
+.app-bottom{position:relative;z-index:2;display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:18px}
+.version{color:#888;text-decoration:none;font-size:12px}
+.version:hover{color:#fff;text-decoration:underline}
+.source{color:#666;font-size:12px}
+#status{padding:24px 0;color:#999;line-height:1.5}
+@media(max-width:520px){main{padding:12px}#apps{grid-template-columns:repeat(auto-fill,minmax(155px,1fr))}.app{padding:13px;min-height:145px}.app-top{gap:9px}.app-icon,.app-icon-fallback{width:32px;height:32px}.app h2{font-size:14px}}
+</style>
 </head>
 <body>
-  <main>
-    <input
-      id="search"
-      type="search"
-      placeholder="Search apps..."
-      aria-label="Search apps"
-      autocomplete="off"
-    >
-
-    <div id="status">Loading apps...</div>
-    <section id="apps" aria-label="ArtCraft apps"></section>
-  </main>
-
-  <script>
-    const appsContainer = document.querySelector("#apps");
-    const searchInput = document.querySelector("#search");
-    const status = document.querySelector("#status");
-
-    let apps = [];
-
-    function escapeHTML(value) {
-      return String(value ?? "").replace(/[&<>"']/g, char => ({
-        "&": "&amp;",
-        "<": "&lt;",
-        ">": "&gt;",
-        '"': "&quot;",
-        "'": "&#39;"
-      })[char]);
-    }
-
-    function normalizeApp(app) {
-      const id = String(app.id ?? app.name ?? "").toLowerCase();
-      const repo = app.repository || `https://github.com/storytold/${id}`;
-      const iconName = app.iconName || id;
-
-      return {
-        ...app,
-        id,
-        name: app.name || id,
-        description: app.description || "",
-        version: app.version || "Source",
-        url: app.url || `./apps/${id}/`,
-        repository: repo,
-        icon: app.icon || `${repo.replace(/\/$/, "")}/raw/refs/heads/main/assets/app-icon/${iconName}.ico`
-      };
-    }
-
-    function renderApps() {
-      const query = searchInput.value.trim().toLowerCase();
-
-      const filtered = apps.filter(app =>
-        `${app.name} ${app.description} ${app.id}`
-          .toLowerCase()
-          .includes(query)
-      );
-
-      appsContainer.innerHTML = filtered.map(app => `
-        <a
-          class="app"
-          href="${escapeHTML(app.url)}"
-          aria-label="Open ${escapeHTML(app.name)}"
-        >
-          <img
-            class="app-icon"
-            src="${escapeHTML(app.icon)}"
-            alt=""
-            loading="lazy"
-            onerror="this.style.visibility='hidden'"
-          >
-
-          <div class="app-info">
-            <h2 class="app-name">${escapeHTML(app.name)}</h2>
-            <p class="app-description">${escapeHTML(app.description)}</p>
-            <span
-              class="app-version"
-              role="link"
-              tabindex="0"
-              data-source="${escapeHTML(app.repository)}"
-              aria-label="Source code for ${escapeHTML(app.name)}"
-            >${escapeHTML(app.version)}</span>
-          </div>
-        </a>
-      `).join("");
-
-      status.hidden = filtered.length > 0;
-      status.textContent = query
-        ? "No matching apps."
-        : "No apps available.";
-    }
-
-    // Let the version link open the source repository without opening the app.
-    appsContainer.addEventListener("click", event => {
-      const version = event.target.closest(".app-version");
-      if (!version) return;
-
-      event.preventDefault();
-      event.stopPropagation();
-      window.location.href = version.dataset.source;
-    });
-
-    appsContainer.addEventListener("keydown", event => {
-      const version = event.target.closest(".app-version");
-      if (!version || !["Enter", " "].includes(event.key)) return;
-
-      event.preventDefault();
-      event.stopPropagation();
-      window.location.href = version.dataset.source;
-    });
-
-    searchInput.addEventListener("input", renderApps);
-
-    async function loadApps() {
-      try {
-        const response = await fetch("./apps.json", { cache: "no-store" });
-        if (!response.ok) throw new Error("Could not load apps.json");
-
-        const data = await response.json();
-        apps = (Array.isArray(data) ? data : data.apps || [])
-          .map(normalizeApp);
-
-        renderApps();
-      } catch (error) {
-        status.hidden = false;
-        status.textContent = "Failed to load apps. Please try again later.";
-        console.error(error);
-      }
-    }
-
-    loadApps();
-  </script>
+<main>
+<input id="search" type="search" placeholder="Search apps..." aria-label="Search apps" autocomplete="off" spellcheck="false">
+<div id="apps"></div>
+<div id="status" role="status">Loading apps...</div>
+</main>
+<script>
+"use strict";
+const appsElement=document.getElementById("apps");
+const searchElement=document.getElementById("search");
+const statusElement=document.getElementById("status");
+let apps=[];
+function escapeText(value){return String(value??"")}
+function normalizeApp(app){
+  const id=escapeText(app.id).trim();
+  if(!id)return null;
+  const repository=escapeText(app.repository||app.source||`https://github.com/storytold/${id}`);
+  const iconName=escapeText(app.icon||id);
+  return {
+    id,
+    name:escapeText(app.name||id),
+    description:escapeText(app.description||""),
+    url:escapeText(app.url||`apps/${encodeURIComponent(id)}/`),
+    version:escapeText(app.version||""),
+    repository,
+    icon:`assets/app-icon/${iconName}-small.svg`
+  };
+}
+function makeElement(tag,className,text){
+  const element=document.createElement(tag);
+  if(className)element.className=className;
+  if(text!==undefined)element.textContent=text;
+  return element;
+}
+function renderApps(){
+  const query=searchElement.value.trim().toLowerCase();
+  const filtered=apps.filter(app=>`${app.name} ${app.description} ${app.id} ${app.version}`.toLowerCase().includes(query));
+  appsElement.replaceChildren();
+  statusElement.textContent=filtered.length?`${filtered.length} app${filtered.length===1?"":"s"}`:"No apps found.";
+  for(const app of filtered){
+    const card=makeElement("article","app");
+    const mainLink=makeElement("a","app-main");
+    mainLink.href=app.url;
+    mainLink.setAttribute("aria-label",`Open ${app.name}`);
+    const top=makeElement("div","app-top");
+    const icon=makeElement("img","app-icon");
+    icon.src=app.icon;
+    icon.alt="";
+    icon.loading="lazy";
+    const fallback=makeElement("div","app-icon-fallback",app.name.split(/[\s-]+/).map(part=>part[0]||"").join("").slice(0,3).toUpperCase());
+    icon.addEventListener("error",()=>{icon.hidden=true;fallback.style.display="flex"},{once:true});
+    const title=makeElement("h2","",app.name);
+    top.append(icon,fallback,title);
+    const description=makeElement("p","description",app.description);
+    mainLink.append(top,description);
+    const bottom=makeElement("div","app-bottom");
+    const versionLink=makeElement("a","version",app.version?`Version ${app.version}`:"Source repository");
+    versionLink.href=app.repository;
+    versionLink.target="_blank";
+    versionLink.rel="noopener noreferrer";
+    versionLink.addEventListener("click",event=>event.stopPropagation());
+    const sourceLabel=makeElement("span","source","Source");
+    bottom.append(versionLink,sourceLabel);
+    card.append(mainLink,bottom);
+    appsElement.append(card);
+  }
+}
+searchElement.addEventListener("input",renderApps);
+async function loadApps(){
+  try{
+    const response=await fetch("apps.json",{cache:"no-store"});
+    if(!response.ok)throw new Error(`HTTP ${response.status}`);
+    const data=await response.json();
+    if(!Array.isArray(data))throw new Error("apps.json must contain a JSON array");
+    apps=data.map(normalizeApp).filter(Boolean);
+    apps.sort((a,b)=>a.name.localeCompare(b.name));
+    renderApps();
+    statusElement.textContent=apps.length?`${apps.length} apps`:"No apps available.";
+  }catch(error){
+    console.error("Failed to load apps.json:",error);
+    appsElement.replaceChildren();
+    statusElement.textContent="Could not load apps. Check that apps.json exists and contains a valid app list.";
+  }
+}
+loadApps();
+</script>
 </body>
 </html>
